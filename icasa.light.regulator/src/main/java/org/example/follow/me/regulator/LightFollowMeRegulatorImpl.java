@@ -372,7 +372,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 			}*/
 		}
 		
-		System.out.println("Check" + sum(result));
+		System.out.println("Maxpower" + sum(result));
 
 		return restPower;
 	}
@@ -381,7 +381,8 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 
 		/* list of binary lights in the location */
 		List<DimmerLight> sameLocationLigths = getDimmerLightFromLocation(location);
-
+		powerRest = (powerRest/100.0d);
+		System.out.println("Power to set" +powerRest );
 		
 		for (DimmerLight dimmerLight : sameLocationLigths) {
 			
