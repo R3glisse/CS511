@@ -3,6 +3,8 @@ package org.example.follow.me.regulator;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
@@ -159,7 +161,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 
 		
 		//Activation of the light power
-		energyToLightConverter();
+		//energyToLightConverter();
 		
 		/*
 		 * If the device is a presence sensor
@@ -177,7 +179,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 						.equals(PresenceSensor.LOCATION_UNKNOWN)) {
 					if (changingSensor.getSensedPresence())
 						setStateLights((String) changingSensor.getPropertyValue(LOCATION_PROPERTY_NAME),
-								maxLightsToTurnOnPerRoom);
+								maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) changingSensor.getPropertyValue(LOCATION_PROPERTY_NAME), 0);
 				}
@@ -194,7 +196,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* if a presence is sensed */
 					if (changingSensor.getSensedPresence())
 						setStateLights((String) changingSensor.getPropertyValue(LOCATION_PROPERTY_NAME),
-								maxLightsToTurnOnPerRoom);
+								maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) changingSensor.getPropertyValue(LOCATION_PROPERTY_NAME), 0);
 				}
@@ -231,7 +233,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 							getPresenceSensorFromLocation((String) oldValue)))
-						setStateLights((String) oldValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) oldValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) oldValue, 0);
 				}
@@ -242,7 +244,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 							getPresenceSensorFromLocation((String) oldValue)))
-						setStateLights((String) oldValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) oldValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) oldValue, 0);
 
@@ -250,7 +252,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 									getPresenceSensorFromLocation((String) newValue)))
-						setStateLights((String) newValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) newValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) newValue, 0);
 
@@ -273,7 +275,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 							getPresenceSensorFromLocation((String) oldValue)))
-						setStateLights((String) oldValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) oldValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) oldValue, 0);
 				}
@@ -284,7 +286,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 							getPresenceSensorFromLocation((String) oldValue)))
-						setStateLights((String) oldValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) oldValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) oldValue, 0);
 
@@ -292,7 +294,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					/* If there is a presence sensed */
 					if (isThereAPresenceSensed(
 							getPresenceSensorFromLocation((String) newValue)))
-						setStateLights((String) newValue, maxLightsToTurnOnPerRoom);
+						setStateLights((String) newValue, maximumEnergyConsumptionAllowedInARoom);
 					else
 						setStateLights((String) newValue, 0);
 
@@ -312,27 +314,52 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 	}
 
 	/*----------------------------------LAMPS MANAGER ---------------------------*/
-	private void setStateLights(String location, int maxNumberOfLightedLamps) {
+	private void setStateLights(String location, double maxPowerOfLightedLamps) {
 
-		int numberOfLightedLamps;
-		numberOfLightedLamps = setStateBinaryLightFromLocation(location, maxNumberOfLightedLamps);
-		setStateDimmerLightFromLocation(location, maxNumberOfLightedLamps - numberOfLightedLamps);
+		double restPower;
+		restPower = setStateBinaryLightFromLocation(location, maxPowerOfLightedLamps);
+		System.out.println("Check" + restPower);
+		setStateDimmerLightFromLocation(location, maxPowerOfLightedLamps - restPower);
 
 	}
 
-	private int setStateBinaryLightFromLocation(String location, int maxNumberOfLightedLamps) {
+	private double setStateBinaryLightFromLocation(String location, Double maxPowerOfLightedLamps) {
 
 		/* list of binary lights in the location */
 		List<BinaryLight> sameLocationLigths = getBinaryLightFromLocation(location);
+		int i;
 
-		int numberOfLightedLamps = getNumberOfLightedLamps(sameLocationLigths);
+		
+	    double[] result = greadySubSetClosestSum(maxPowerOfLightedLamps, powerBinaryLightInArray(sameLocationLigths));
+	    double restPower = sum(result);
 
-		for (BinaryLight binaryLight : sameLocationLigths) {
+		for (BinaryLight binaryLight : sameLocationLigths) {		
+			
+			boolean isOn = false;
+			
+			for(i=0;i<result.length;i++){
+				
+				if(binaryLight.getMaxPowerLevel() == result[i]){
+					if(!isOn)
+					{
+					binaryLight.turnOn();
+					result[i] = result[i]-binaryLight.getMaxPowerLevel();
+					isOn = true;
+					}
+				}
+				else{
+					if(!isOn)
+						binaryLight.turnOff();
+					else{}
+				}
+				
+			}
+			
 			/*
 			 * switch them on/off depending on the number of lighted lamps
 			 * and their power status
 			 */
-			if (numberOfLightedLamps < maxNumberOfLightedLamps) {
+			/*if (numberOfLightedLamps < maxNumberOfLightedLamps) {
 				if (!binaryLight.getPowerStatus()) {
 					binaryLight.turnOn();
 					numberOfLightedLamps++;
@@ -342,24 +369,39 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					binaryLight.turnOff();
 					numberOfLightedLamps--;
 				}
-			}
+			}*/
 		}
-		return numberOfLightedLamps;
+		
+		System.out.println("Check" + sum(result));
+
+		return restPower;
 	}
 
-	private int setStateDimmerLightFromLocation(String location, int maxNumberOfLightedLamps) {
+	private double setStateDimmerLightFromLocation(String location, double powerRest) {
 
 		/* list of binary lights in the location */
 		List<DimmerLight> sameLocationLigths = getDimmerLightFromLocation(location);
 
-		int numberOfLightedDimmerLamps = getNumberOfLightedDimmerLamps(sameLocationLigths);
 		
 		for (DimmerLight dimmerLight : sameLocationLigths) {
+			
+			if(powerRest >= 1.0)
+			{
+				while(powerRest >= 1){
+					dimmerLight.setPowerLevel(1.0);
+					powerRest--;
+				}
+			}
+			else if(powerRest > 0){
+				dimmerLight.setPowerLevel(powerRest);
+			}
+			else
+				dimmerLight.setPowerLevel(0.0);
 			/*
 			 * switch them on/off depending on the number of lighted lamps
 			 * and their power status
 			 */
-			if (numberOfLightedDimmerLamps < maxNumberOfLightedLamps) {
+			/*if (numberOfLightedDimmerLamps < maxNumberOfLightedLamps) {
 				if (dimmerLight.getPowerLevel() == 0.0) {
 					dimmerLight.setPowerLevel(1.0);
 					numberOfLightedDimmerLamps++;
@@ -369,12 +411,12 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 					dimmerLight.setPowerLevel(0.0);
 					numberOfLightedDimmerLamps--;
 				}
-			}
+			}*/
 		}
-		return numberOfLightedDimmerLamps;
+		return powerRest;
 	}
 
-	private synchronized int getNumberOfLightedLamps(List<BinaryLight> listOfBinaryLights) {
+	/*private synchronized int getNumberOfLightedLamps(List<BinaryLight> listOfBinaryLights) {
 
 		int counter = 0;
 
@@ -384,9 +426,9 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 		}
 
 		return counter;
-	}
+	}*/
 
-	private synchronized int getNumberOfLightedDimmerLamps(List<DimmerLight> listOfDimmerLights) {
+	/*private synchronized int getNumberOfLightedDimmerLamps(List<DimmerLight> listOfDimmerLights) {
 
 		int counter = 0;
 
@@ -396,7 +438,7 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 		}
 
 		return counter;
-	}
+	}*/
 	
 	/*----------------Energy manager -------------------------*/
 	
@@ -407,6 +449,19 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 		 setMaximumNumberOfLightsToTurnOn(nboflight);
 	}
 	
+	/*-----------------Get the max power of all binary light in the room -------------*/ 
+	
+	private double[] powerBinaryLightInArray(List<BinaryLight> sameLocationLigths)
+	{
+		double[] powerlightcontents = new double[15];
+		int i=0;
+		
+		for(BinaryLight binarylight : sameLocationLigths){
+			powerlightcontents[i] = binarylight.getMaxPowerLevel();
+			i++;
+		}
+		return powerlightcontents;
+	}
 	
 
 	/*--- Getting the location of a device  ---*/
@@ -447,9 +502,100 @@ public class LightFollowMeRegulatorImpl implements DeviceListener, FollowMeConfi
 		}
 		
 		return presenceSensorsLocation;
+		
 	}
 	
-
+	/*---------------------------------Perfect Algo -------------------------*/
+	
+    public static double[] greadySubSetClosestSum(final double maximalSum, final double[] items) {
+        
+        // the current best results :
+        double bestSum = 0.0d;
+        double[] bestCombination = new double[0];
+ 
+        /*
+         * Generate all the possible combinations. There are 2^N possibilities
+         * that can therefore be represented by a bitset.
+         * The use of bitset is done to reduce the number of line of codes.
+         * The solution is thus far from being optimized.
+         */
+        for (int i = 0; i < Math.pow(2, items.length); i++) {
+            // Get the current combination 
+            double[] currentCombination = multiplyByBitset(convertToBitSet(i), items);
+            double currentSum = sum(currentCombination);
+ 
+            // if we have the best result possible
+            if (currentSum == maximalSum) {
+                // return it
+                return currentCombination;
+            }
+ 
+            // if the current result is better than the previous best result
+            if ((currentSum <= maximalSum) && (currentSum > bestSum)) {
+                // store it
+                bestSum = currentSum;
+                bestCombination = currentCombination;
+            }
+        }
+ 
+        return bestCombination;
+    }
+ 
+    /**
+     * Sum of the given variables or array.
+     * 
+     * @param variables
+     *            the variables to be summed.
+     * @return the sum of the variables.
+     */
+    private static double sum(double[] variables) {
+        double sum = 0;
+        for (int i=0;i<variables.length;i++) {
+            sum += variables[i];
+        }
+        return sum;
+    }
+ 
+    /**
+     * Convert a number into BitSet.
+     * This could be obtained directly in JAVA7 (iCASA is not compatible)
+     * 
+     * @param number
+     *            the number to convert
+     * @return the resulting bit set
+     */
+    private static BitSet convertToBitSet(long number) {
+        BitSet bits = new BitSet();
+        int index = 0;
+        while (number != 0L) {
+            if ((number % 2L) != 0) {
+                bits.set(index);
+            }
+            ++index;
+            number = number >>> 1;
+        }
+        return bits;
+    }
+ 
+    /**
+     * Multiply an array by a bitset
+     * 
+     * @param bitset
+     *            the BitSet
+     * @param array
+     *            the array
+     * @return the resulting array
+     */
+    private static double[] multiplyByBitset(BitSet bitset, double[] array) {
+        assert (bitset.length() == array.length) : "array and bitset must have the same size";
+ 
+        double[] result = new double[array.length];
+        for (int i = 0; i < array.length; i++) {
+            result[i] = bitset.get(i) ? array[i] : 0;
+        }
+        return result;
+    }
+    
 	
 	/*----------------------------------FollowMe Configuration methods ------*/
 
